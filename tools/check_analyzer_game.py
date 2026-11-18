@@ -8,15 +8,15 @@ import tempfile
 
 
 root = Path(__file__).resolve().parents[1]
-engine = os.environ.get("GODOT", "/tmp/dps-localization-test/engine/Godot")
-with tempfile.TemporaryDirectory(prefix="dps-game-contract-") as directory:
+engine = os.environ.get("GODOT", "/tmp/brotato-insight-toolkit-test/engine/Godot")
+with tempfile.TemporaryDirectory(prefix="insight-toolkit-game-contract-") as directory:
     project = Path(directory)
     shutil.copytree(root / "tools/tests/game", project, dirs_exist_ok=True)
     shutil.copytree(
-        root / "mods-unpacked/aimuzov-DpsCheck",
-        project / "mods-unpacked/aimuzov-DpsCheck",
+        root / "mods-unpacked/aimuzov-InsightToolkit",
+        project / "mods-unpacked/aimuzov-InsightToolkit",
     )
-    shutil.copyfile(project / "forecast.gd", project / "mods-unpacked/aimuzov-DpsCheck/core/wave_forecast.gd")
+    shutil.copyfile(project / "forecast.gd", project / "mods-unpacked/aimuzov-InsightToolkit/core/wave_forecast.gd")
     target = project / "ui/menus/shop"
     target.mkdir(parents=True)
     shutil.copyfile(project / "popup.gd", target / "item_popup.gd")
@@ -41,8 +41,8 @@ with tempfile.TemporaryDirectory(prefix="dps-game-contract-") as directory:
         {"base": base, "class": name, "language": "GDScript", "path": "res://" + filename}
         for name, filename, base in classes
     ])
-    configuration += '\n_global_script_class_icons={}\n[application]\nconfig/name="DpsGameContract"\n'
-    configuration += 'config/use_custom_user_dir=true\nconfig/custom_user_dir_name="DpsCheck-game-contract"\n'
+    configuration += '\n_global_script_class_icons={}\n[application]\nconfig/name="InsightToolkitGameContract"\n'
+    configuration += 'config/use_custom_user_dir=true\nconfig/custom_user_dir_name="InsightToolkit-game-contract"\n'
     configuration += 'run/main_scene="res://test.tscn"\n[autoload]\n'
     for name, filename in [("Keys", "keys"), ("RunData", "run"), ("Utils", "utils"),
                            ("ItemService", "item_service"), ("ProgressData", "progress"), ("TempStats", "temp"), ("Text", "text")]:

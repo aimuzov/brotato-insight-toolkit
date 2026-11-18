@@ -11,7 +11,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
-MOD_ID="aimuzov-DpsCheck"
+MOD_ID="aimuzov-InsightToolkit"
 WORKSHOP="$HOME/Library/Application Support/Steam/steamapps/workshop/content/1942280"
 WORKSHOP_ITEM="${WORKSHOP_ITEM:-3598984651}"
 OUT_DIR="${OUT_DIR:-$WORKSHOP/$WORKSHOP_ITEM}"

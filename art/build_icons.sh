@@ -6,7 +6,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 : "${GODOT:?set GODOT to a Godot 3.5 binary}"
 
-OUT="../mods-unpacked/aimuzov-DpsCheck/art/icons"
+OUT="../mods-unpacked/aimuzov-InsightToolkit/art/icons"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
