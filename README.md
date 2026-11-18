@@ -76,15 +76,6 @@ mkdir -p /tmp/brotato-insight-toolkit-build
 OUT_DIR=/tmp/brotato-insight-toolkit-build ./build.sh
 ```
 
-<details>
-<summary>Technical ID and existing settings</summary>
-
-The technical ID `aimuzov-DpsCheck`, archive `dist/aimuzov-DpsCheck.zip` and settings file `user://aimuzov-dpscheck.json` are retained for compatibility with the installed mod.
-
-Project and repository name: `brotato-insight-toolkit`.
-
-</details>
-
 ## Development
 
 Requires Python 3 and a separate **Godot 3.7 executable without the game PCK**. The Brotato executable starts the real game and uses its profile, so tests need a separate engine.

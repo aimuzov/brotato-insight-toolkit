@@ -8,7 +8,7 @@ import re
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "tools/localization-source.json"
-CATALOGUES = ROOT / "mods-unpacked/aimuzov-DpsCheck/localization"
+CATALOGUES = ROOT / "mods-unpacked/aimuzov-InsightToolkit/localization"
 TOKEN = re.compile(r"\{\d+\}|%[sdif]|\[/?[^\[\]\r\n]+\]")
 
 

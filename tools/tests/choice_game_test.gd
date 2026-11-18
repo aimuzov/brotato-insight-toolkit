@@ -1,6 +1,6 @@
 extends Node
 
-const DIR = "res://mods-unpacked/aimuzov-DpsCheck/"
+const DIR = "res://mods-unpacked/aimuzov-InsightToolkit/"
 const Fixture = preload("res://fixture.gd")
 const Description = preload("res://description.gd")
 var checks = 0

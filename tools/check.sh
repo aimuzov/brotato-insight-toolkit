@@ -11,7 +11,7 @@ cd "$(dirname "$0")/.."
 : "${GODOT:?set GODOT to a Godot 3.5 binary}"
 : "${GAME_PROJECT:?set GAME_PROJECT to the recovered Brotato project}"
 
-MOD_ID="aimuzov-DpsCheck"
+MOD_ID="aimuzov-InsightToolkit"
 BASE_ONLY="Script isn't fully loaded (cyclic preload?): res://"
 
 if ! grep -q '^config/custom_user_dir_name=' "$GAME_PROJECT/project.godot"; then
