@@ -1,65 +1,75 @@
-![Баннер Brotato Insight Toolkit: картофельный аналитик с лупой и инструментами](.github/banner.png)
+<p align="center">
+	<img src="https://img.shields.io/badge/English-638b3c?logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2MCAzMCI+PGNsaXBQYXRoIGlkPSJ0Ij48cGF0aCBkPSJNMzAsMTVoMzB2MTV6djE1aC0zMHpoLTMwdi0xNXp2LTE1aDMweiIvPjwvY2xpcFBhdGg+PHBhdGggZD0iTTAsMHYzMGg2MHYtMzB6IiBmaWxsPSIjMDEyMTY5Ii8+PHBhdGggZD0iTTAsMCA2MCwzME02MCwwIDAsMzAiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSI2Ii8+PHBhdGggZD0iTTAsMCA2MCwzME02MCwwIDAsMzAiIGNsaXAtcGF0aD0idXJsKCN0KSIgc3Ryb2tlPSIjQzgxMDJFIiBzdHJva2Utd2lkdGg9IjQiLz48cGF0aCBkPSJNMzAsMHYzME0wLDE1aDYwIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMTAiLz48cGF0aCBkPSJNMzAsMHYzME0wLDE1aDYwIiBzdHJva2U9IiNDODEwMkUiIHN0cm9rZS13aWR0aD0iNiIvPjwvc3ZnPg==" alt="English">
+	<a href="README.ru.md"><img src="https://img.shields.io/badge/%D0%A0%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9-555?logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5IDYiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik0wIDBoOXYzSDB6Ii8+PHBhdGggZmlsbD0iIzAwMzlhNiIgZD0iTTAgMmg5djJIMHoiLz48cGF0aCBmaWxsPSIjZDUyYjFlIiBkPSJNMCA0aDl2MkgweiIvPjwvc3ZnPg==" alt="Русский"></a>
+</p>
 
-# Brotato Insight Toolkit
 
-Статистика боя, рекомендации по сборке и удобный интерфейс для **Brotato**.
+<p align="center">
+  <img src=".github/banner.png" alt="Brotato Insight Toolkit" width="100%">
+</p>
 
-![Godot 3 · ModLoader 6.3 · Локальная сборка](.github/badges.svg)
+<p align="center">
+  <img src=".github/badges.en.svg" alt="Godot 3, ModLoader 6.3, local build">
+</p>
 
-[Возможности](#возможности) · [Настройки](#настройки) · [Управление](#управление) · [Сборка](#сборка) · [Разработка](#разработка)
+<h3 align="center">Combat stats, build advice and a cleaner interface</h3>
 
-## Возможности
+A mod for the Steam version of **Brotato**, with features you can toggle individually.
 
-| Раздел | Что добавляет мод |
+[Features](#features) · [Settings](#settings) · [Controls](#controls) · [Build](#build) · [Development](#development)
+
+## Features
+
+| Area | What the mod adds |
 | --- | --- |
-| **Статистика боя** | Урон по оружию, объединение одинакового оружия в одну строку и сравнение с прошлой волной. Отдельная вкладка с убийствами, нанесённым и полученным уроном по врагам. |
-| **Выбор улучшений** | Анализ покупок, прокачки, реролла и продажи с учётом персонажа и текущего билда. На экране повышения уровня рекомендация появляется рядом с карточкой в фокусе. |
-| **Предпросмотр характеристик** | Итоговые значения после покупки, косвенные изменения от других предметов, источники бонусов и пороги. |
-| **Читаемый интерфейс** | Широкие подсказки, компактные иконки, короткие названия и сокращения больших чисел: `12.5k`, `1.2kk`, `3kkk`. |
-| **Русский перевод** | Исправленные описания и короткие названия: «ХП», «Реген», «Кража», «Крит». Обычный формат можно вернуть в настройках. |
-| **Удобства** | Обратный порядок улучшений «Опухоли», отметка новых улучшений, ускорение волн ×1–×4, закрепление камеры в одиночке и круги дальности оружия. |
+| **Combat stats** | Per-weapon damage, identical weapons grouped into one row, and comparison with the previous wave. A separate tab tracks kills, damage dealt and damage taken by enemy type. |
+| **Build advice** | Recommendations for purchases, level-ups, rerolls and sales based on your character and current build. On the level-up screen, advice appears beside the focused card. |
+| **Stat previews** | Resulting stats after a purchase, indirect changes from other items, bonus sources and thresholds. |
+| **Readable UI** | Wider tooltips, compact icons, short stat names and abbreviated large numbers: `12.5k`, `1.2kk`, `3kkk`. |
+| **Russian localization** | Corrected descriptions and shorter Russian stat names. The standard wording can be restored in settings. |
+| **Quality of life** | Newest-first Tumor upgrades, unread upgrade markers, ×1–×4 wave speed, a fixed solo camera and weapon range indicators. |
 
-Разница с прошлой волной показывается после превышения её урона или в последние пять игровых секунд. Рост отмечается зелёным, снижение — красным.
+The damage difference appears once the current total exceeds the previous wave's total, or during the final five in-game seconds. Increases are green; decreases are red.
 
-Анализатор оценивает бой и реролл приближённо и помечает неучтённые эффекты. История боя накапливается в текущем запуске игры. В коопе рекомендации улучшений сохраняют прежний вывод внутри карточек.
+The analyzer estimates combat and reroll outcomes and flags effects it cannot fully account for. Combat history accumulates during the current game session. In co-op, level-up advice remains inside the cards.
 
-## Настройки
+## Settings
 
-**Настройки игры → Геймплей → Brotato Insight Toolkit**
+**In-game options → Gameplay → Brotato Insight Toolkit**
 
-Функции включаются отдельно. Например:
+Features can be toggled individually. The mod's custom setting labels currently use Russian:
 
-- **Короткие числа** — переключение между `12.5k` и обычным отображением точного значения.
-- **Короткие названия** и **Исправленный перевод** — независимые настройки локализации.
-- **Итоговые значения статов** — предпросмотр покупки и прокачки.
-- **Анализатор выбора** — рекомендации; по умолчанию выключен.
-- **Широкие подсказки**, **Статистика крипов**, **Урон от оружия на экране** — настройка интерфейса под себя.
+- **Short numbers** (`Короткие числа`): switch between `12.5k` and the exact value in its normal format.
+- **Short names** (`Короткие названия`) and **Corrected translation** (`Исправленный перевод`): independent localization settings.
+- **Resulting stats** (`Итоговые значения статов`): preview purchases and level-ups.
+- **Choice analyzer** (`Анализатор выбора`): recommendations; disabled by default.
+- **Wide tooltips** (`Широкие подсказки`), **Enemy stats** (`Статистика крипов`) and **Weapon damage HUD** (`Урон от оружия на экране`): adjust the interface to your preference.
 
-## Управление
+## Controls
 
-Кнопки работают во время активной волны. При переключении на экране ненадолго появляется текущее состояние.
+These shortcuts work during an active wave. A brief on-screen message confirms the selected speed or damage-number state.
 
-| Действие | Клавиатура | DualSense / DualShock 4 |
+| Action | Keyboard | DualSense / DualShock 4 |
 | --- | --- | --- |
-| Уменьшить скорость | `-` | `□` |
-| Увеличить скорость | `=` | `△` |
-| Показать или скрыть цифры урона | `\` | `○` |
+| Decrease speed | `-` | `□` |
+| Increase speed | `=` | `△` |
+| Show or hide damage numbers | `\` | `○` |
 
-Скорость меняет ход игрового времени: при ×2 волна на 60 игровых секунд занимает примерно 30 реальных секунд.
+Speed changes the flow of game time: at ×2, a 60-second wave takes approximately 30 real seconds.
 
-## Сборка
+## Build
 
-Локальная сборка для Steam-версии Brotato. Нужны **Bash** и **ZIP**.
+A local build for the Steam version of Brotato. Requires **Bash** and **ZIP**.
 
-Закройте игру через её меню перед заменой архива мода:
+Close the game through its menu before replacing the mod archive:
 
 ```sh
 ./build.sh
 ```
 
-Скрипт собирает ZIP и копирует его в локальную папку существующей подписки Workshop. Назначение можно изменить через `WORKSHOP_ITEM` или `OUT_DIR`.
+The script builds a ZIP and copies it into the local folder of an existing Workshop subscription. Override the destination with `WORKSHOP_ITEM` or `OUT_DIR`.
 
-Для сборки **без установки в игру**:
+To build **without installing into the game**:
 
 ```sh
 mkdir -p /tmp/brotato-insight-toolkit-build
@@ -67,17 +77,17 @@ OUT_DIR=/tmp/brotato-insight-toolkit-build ./build.sh
 ```
 
 <details>
-<summary>Технический ID и сохранение настроек</summary>
+<summary>Technical ID and existing settings</summary>
 
-Технический ID `aimuzov-DpsCheck`, архив `dist/aimuzov-DpsCheck.zip` и файл настроек `user://aimuzov-dpscheck.json` сохранены для совместимости с установленным модом.
+The technical ID `aimuzov-DpsCheck`, archive `dist/aimuzov-DpsCheck.zip` and settings file `user://aimuzov-dpscheck.json` are retained for compatibility with the installed mod.
 
-Название проекта и репозитория: `brotato-insight-toolkit`.
+Project and repository name: `brotato-insight-toolkit`.
 
 </details>
 
-## Разработка
+## Development
 
-Нужны Python 3 и отдельный исполняемый файл **Godot 3.7 без игрового PCK**. Исполняемый файл Brotato запускает настоящую игру и использует её профиль, поэтому для тестов нужен отдельный движок.
+Requires Python 3 and a separate **Godot 3.7 executable without the game PCK**. The Brotato executable starts the real game and uses its profile, so tests need a separate engine.
 
 ```sh
 GODOT=/path/to/standalone/Godot python3 tools/check_analyzer.py
@@ -85,4 +95,4 @@ GODOT=/path/to/standalone/Godot python3 tools/check_analyzer_game.py
 python3 tools/check_localization.py
 ```
 
-Проверки используют изолированные проекты и отдельные профили. Контракты игры проверяются на заглушках; реальное отображение проверяется отдельно в Brotato. Для интерфейсных макетов используется Arial из системных шрифтов macOS.
+Tests use isolated projects and separate profiles. Game contracts are checked with stubs; actual rendering is verified separately in Brotato. UI fixtures use Arial from the macOS system fonts.
