@@ -1,0 +1,8 @@
+Generator: built-in image_gen
+
+Use case: logo-brand.
+Asset type: very wide GitHub README banner, landscape 3:1 composition.
+Create original branding for the Brotato fan mod "Brotato Insight Toolkit". Dark forest-green backdrop with a subtle game-like organic texture; warm ivory lettering and muted lime accents. Flat hand-drawn 2D game illustration with thick dark outlines, crisp silhouettes, restrained shading.
+Composition: generous safe margins, large readable title occupying the left two thirds, an expressive small potato character with round spectacles and a simple tool belt on the right, accompanied by a magnifying glass and three small outlined stat symbols (heart, sword, bar chart). Keep the composition uncluttered and readable at README width.
+Text, verbatim, and no other text: "BROTATO" on the first line, "INSIGHT TOOLKIT" on the second line. Chunky clean game-title lettering. Spell INSIGHT and TOOLKIT exactly.
+No extra slogan, no watermark, no official branding badge, no fake screenshot, no photorealism, no 3D, no neon glow. Opaque background.
