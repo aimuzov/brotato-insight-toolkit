@@ -76,6 +76,8 @@ mkdir -p /tmp/brotato-insight-toolkit-build
 OUT_DIR=/tmp/brotato-insight-toolkit-build ./build.sh
 ```
 
+Иконки параметров основаны на **Revamped Icons от mono / monoSDE** и с разрешения автора перекрашены в приглушённые цвета. [Авторство и пересборка](art/README.md).
+
 ## Разработка
 
 Нужны Python 3 и отдельный исполняемый файл **Godot 3.7 без игрового PCK**. Исполняемый файл Brotato запускает настоящую игру и использует её профиль, поэтому для тестов нужен отдельный движок.
