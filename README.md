@@ -76,6 +76,8 @@ mkdir -p /tmp/brotato-insight-toolkit-build
 OUT_DIR=/tmp/brotato-insight-toolkit-build ./build.sh
 ```
 
+Stat icons use artwork from **Revamped Icons by mono / monoSDE**, adapted with permission to a muted palette. See [artwork credits and rebuild instructions](art/README.md).
+
 ## Development
 
 Requires Python 3 and a separate **Godot 3.7 executable without the game PCK**. The Brotato executable starts the real game and uses its profile, so tests need a separate engine.
