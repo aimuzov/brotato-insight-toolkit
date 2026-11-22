@@ -68,8 +68,9 @@ static func _icon(stat_key: String, cache: Dictionary) -> Texture:
 		var image = Image.new()
 		if image.load(path) == OK:
 			texture = ImageTexture.new()
-			# Как в импорте игровых иконок: фильтрация без mipmap, иначе в мелком размере мыло
-			texture.create_from_image(image, Texture.FLAG_FILTER)
+			# В панели PNG уменьшаются в несколько раз: mipmap сглаживает тонкие края.
+			image.fix_alpha_edges()
+			texture.create_from_image(image, Texture.FLAG_FILTER | Texture.FLAG_MIPMAPS)
 			# Описание оружия вставляет иконку по resource_path.
 			texture.take_over_path(path)
 	cache[path] = texture
