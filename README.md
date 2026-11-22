@@ -76,7 +76,7 @@ mkdir -p /tmp/brotato-insight-toolkit-build
 OUT_DIR=/tmp/brotato-insight-toolkit-build ./build.sh
 ```
 
-Stat icons use artwork from **Revamped Icons by mono / monoSDE**, adapted with permission to a muted palette. See [artwork credits and rebuild instructions](art/README.md).
+Stat icons use artwork from **Revamped Icons by mono / monoSDE**, redrawn with permission as a 128×128 set. See [artwork credits and rebuild instructions](art/README.md).
 
 ## Development
 

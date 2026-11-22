@@ -76,7 +76,7 @@ mkdir -p /tmp/brotato-insight-toolkit-build
 OUT_DIR=/tmp/brotato-insight-toolkit-build ./build.sh
 ```
 
-Иконки параметров основаны на **Revamped Icons от mono / monoSDE** и с разрешения автора перекрашены в приглушённые цвета. [Авторство и пересборка](art/README.md).
+Иконки параметров основаны на **Revamped Icons от mono / monoSDE** и с разрешения автора перерисованы в размере 128×128. [Авторство и пересборка](art/README.md).
 
 ## Разработка
 
