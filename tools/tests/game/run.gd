@@ -1,5 +1,6 @@
 extends Node
 var players_data = []
+var tracked_item_effects = [{}]
 var current_wave = 6
 var current_zone = 0
 var current_difficulty = 0

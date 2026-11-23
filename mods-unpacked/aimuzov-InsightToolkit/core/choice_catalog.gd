@@ -12,7 +12,7 @@ const SUPPORTED = [
 	"structures_can_crit", "weapon_slot", "weapon_slot_upgrades", "max_weapon_tier", "min_weapon_tier",
 	"no_melee_weapons", "no_ranged_weapons", "no_duplicate_weapons", "lock_current_weapons", "max_melee_weapons", "max_ranged_weapons",
 	"weapon_set_bonus", "all_weapons_count_for_sets", "hp_shop", "recycling_gains", "item_box_recycling_gains",
-	"xp_gain", "harvesting_growth", "enemy_health", "enemy_damage", "number_of_enemies", "knockback",
+	"fossil_count", "jellyshield_count", "xp_gain", "harvesting_growth", "enemy_health", "enemy_damage", "number_of_enemies", "knockback",
 	"stat_boosted_wanted_item_tag", "effect_no_weapon_in_shop", "minimum_weapons_in_shop", "reroll_price",
 ]
 
@@ -51,6 +51,7 @@ func capture(player_index: int) -> Dictionary:
 	for key in TempStats.player_stats[player_index]:
 		data.temporary[key_name(key)] = TempStats.player_stats[player_index][key]
 	var character = item(player.current_character)
+	data["preferences"] = character_preferences(player.current_character.wanted_tags, character.effects)
 	var character_present = false
 	for owned in data.items:
 		character_present = character_present or owned.id == character.id
@@ -69,6 +70,27 @@ func capture(player_index: int) -> Dictionary:
 	return data
 
 
+static func character_preferences(tags: Array, effects: Array) -> Array:
+	var result = tags.duplicate()
+	for effect in effects:
+		var stats = []
+		match effect.kind:
+			"stat_gains":
+				if effect.value > 0:
+					stats = effect.stats
+			"source":
+				for scale in effect.source.get("scaling", []):
+					if scale[1] > 0:
+						stats.push_back(scale[0])
+			"link":
+				if effect.entry[1] > 0 and effect.entry[3] > 0:
+					stats.push_back(effect.entry[2])
+		for stat in stats:
+			if stat.begins_with("stat_") and not result.has(stat):
+				result.push_back(stat)
+	return result
+
+
 func item(resource: Resource, depth: int = 0) -> Dictionary:
 	var cache_key = str(resource.get_instance_id()) + ":" + str(depth)
 	if _items.has(cache_key):
@@ -77,13 +99,14 @@ func item(resource: Resource, depth: int = 0) -> Dictionary:
 	var data = {"id": resource.my_id, "uid": str(resource.get_instance_id()), "name": resource.get_name_text(), "tier": resource.tier,
 		"kind": "weapon" if weapon else ("upgrade" if resource.get("upgrade_id") != null else "item"),
 		"effects": [], "sources": [], "unknown": [], "sets": [], "weapon_effects": [], "value": resource.value,
+		"tags": read(resource, "tags", []),
 		"max_nb": read(resource, "max_nb", -1), "flavor": "plain", "price": 0,
 		"crate_recycle_value": ItemService.get_item_box_recycling_value(RunData.current_wave, resource.value, _player, weapon)}
 	if resource.is_cursed or resource.is_meca or resource.is_mutant:
 		data.flavor = "special"
 		data.unknown.push_back("Проклятые и эволюционные эффекты оценены частично")
 	for current in resource.effects:
-		var definitions = effect(current)
+		var definitions = effect(current, data.name)
 		for definition in definitions:
 			definition["source_name"] = data.name
 		data.effects.append_array(definitions)
@@ -135,7 +158,7 @@ func stats(resource: Resource) -> Dictionary:
 		"additional_cooldown_multiplier": resource.additional_cooldown_multiplier, "burn": burn(resource.burning_data)}
 
 
-func effect(resource: Resource) -> Array:
+func effect(resource: Resource, source_name: String = "Бонус комплекта") -> Array:
 	var id = resource.get_id()
 	var key = key_name(resource.key_hash) if resource.key_hash != Keys.empty_hash else resource.key
 	var storage = key_name(resource.custom_key_hash) if resource.custom_key_hash != Keys.empty_hash else resource.custom_key
@@ -146,7 +169,7 @@ func effect(resource: Resource) -> Array:
 				0:
 					var definitions = [{"kind": "sum", "key": key, "value": resource.get_applied_value(_player)}]
 					if not SUPPORTED.has(key) and not key.begins_with("gain_"):
-						definitions.push_back({"kind": "unknown", "label": tr(key.to_upper())})
+						definitions.push_back({"kind": "unknown", "label": source_name})
 					return definitions
 				1:
 					if storage in ["unique_weapon_effects", "additional_weapon_effects", "tier_iv_weapon_effects", "tier_i_weapon_effects", "weapon_scaling_stats", "specific_items_price", "extra_item_in_crate"]:
@@ -171,6 +194,10 @@ func effect(resource: Resource) -> Array:
 			if storage == "gain_stat_for_equipped_item_with_stat":
 				return [{"kind": "on_item_gain", "storage": storage, "entry": [key, value, resource.key2, resource.value2]},
 					{"kind": "unknown", "label": "Будущие бонусы от покупок"}]
+		"pet":
+			# A scene-less PetEffect does nothing. Jellyshield spawns through its counter.
+			if resource.scene == null:
+				return []
 		"stat_cap":
 			var cap_value = value
 			if resource.set_cap_to_current_stat != "":
@@ -205,7 +232,7 @@ func effect(resource: Resource) -> Array:
 			"pet": read(resource, "is_pet", false), "spawn_interval": resource.spawn_cooldown}}]
 	if resource.get("burning_data") != null:
 		return [{"kind": "burn", "burn": burn(resource.burning_data)}]
-	return [{"kind": "unknown", "label": tr(key.to_upper()) if key != "" else id}]
+	return [{"kind": "unknown", "label": source_name}]
 
 
 func burn(resource) -> Dictionary:

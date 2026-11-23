@@ -1,6 +1,15 @@
 extends Reference
 
 
+# Roughly one early upgrade in each stat, to keep unlike stats comparable.
+const PREFERENCE_UNIT = {
+	"stat_max_hp": 3, "stat_hp_regeneration": 2, "stat_lifesteal": 1, "stat_percent_damage": 5,
+	"stat_melee_damage": 2, "stat_ranged_damage": 1, "stat_elemental_damage": 1, "stat_engineering": 2,
+	"stat_attack_speed": 5, "stat_crit_chance": 3, "stat_armor": 1, "stat_dodge": 3,
+	"stat_speed": 3, "stat_range": 15, "stat_harvesting": 5, "stat_luck": 5, "stat_curse": 3, "xp_gain": 10
+}
+
+
 static func evaluate(state, context: Dictionary) -> Dictionary:
 	context = context.duplicate()
 	var count_factor = max(0.01, 1.0 + state.number("number_of_enemies") / 100.0) / max(0.01, 1.0 + context.get("base_enemy_count", 0.0) / 100.0)
@@ -20,8 +29,17 @@ static func evaluate(state, context: Dictionary) -> Dictionary:
 		attacks += output.attacks
 		healing_rate += output.healing
 		unknown.append_array(output.unknown)
+	var preferences = state.data.get("preferences", [])
+	var affinity = 0.0
+	for key in preferences:
+		if PREFERENCE_UNIT.has(key):
+			affinity += state.stat(key, context) / float(PREFERENCE_UNIT[key])
 	var sources = state.data.sources.duplicate(true)
 	for object in state.data.items + state.data.weapons:
+		for tag in object.get("tags", []):
+			if not PREFERENCE_UNIT.has(tag) and tag in preferences:
+				affinity += 1.0
+				break
 		sources.append_array(object.get("sources", []))
 		for label in object.get("unknown", []):
 			unknown.push_back(label)
@@ -44,19 +62,22 @@ static func evaluate(state, context: Dictionary) -> Dictionary:
 	var mean_hit = max(1.0, context.get("mean_hit", hp * 0.18))
 	var max_hit = max(mean_hit, context.get("max_hit", hp * 0.35))
 	var mobility = clamp(1.0 + state.stat("stat_speed", context) / 250.0, 0.6, 1.35)
-	var incoming = hit_rate * mean_hit * duration * armor_coefficient * (1.0 - dodge) / mobility
+	# Approximate angular coverage from the pet's 30px hit radius and 100px orbit.
+	var coverage = min(1.0, max(0.0, state.number("jellyshield_count")) * asin(0.3) / PI)
+	var exposure = 1.0 - coverage * clamp(context.get("projectile_fraction", 0.5), 0.0, 1.0)
+	var incoming = exposure * hit_rate * mean_hit * duration * armor_coefficient * (1.0 - dodge) / mobility
 	var regen = state.stat("stat_hp_regeneration", context)
 	var regen_rate = (1.0 + max(0.0, regen - 1.0) / 2.25) / 5.0 if regen > 0 else 0.0
 	var sustain = (regen_rate + min(healing_rate, 10.0)) * duration
 	var healing = min(sustain, incoming)
 	var guaranteed_ehp = hp / max(0.05, armor_coefficient)
-	var ehp = (hp + healing) / max(0.05, armor_coefficient) / max(0.2, 1.0 - dodge * 0.65) * mobility
+	var ehp = (hp + healing) / max(0.05, armor_coefficient) / max(0.2, 1.0 - dodge * 0.65) * mobility / max(0.05, exposure)
 	var burst = max_hit * armor_coefficient / hp
 	var risk = max(0.0, burst - 0.45) + max(0.0, (incoming - healing) / hp - 1.0) * 0.15
 	var clearance = dps / max(0.01, 1.0 + state.stat("enemy_health", context) / 100.0) / count_factor
 	return {"dps": max(0.0, dps), "clearance": max(0.0, clearance), "ehp": ehp, "burst_ehp": guaranteed_ehp,
 		"risk": risk, "healing": healing, "incoming": incoming, "hp": hp,
-		"future_money": future_income(state, context), "unknown": unique(unknown), "unknown_counts": counts(unknown)}
+		"affinity": affinity, "future_money": future_income(state, context), "unknown": unique(unknown), "unknown_counts": counts(unknown)}
 
 
 static func weapon_output(state, weapon: Dictionary, context: Dictionary) -> Dictionary:
@@ -126,7 +147,7 @@ static func weapon_output(state, weapon: Dictionary, context: Dictionary) -> Dic
 	damage *= 1.0 + crit * max(0.0, crit_multiplier - 1.0)
 	var speed = (state.stat("stat_attack_speed", context) + float(stats.get("attack_speed_mod", 0.0))) / 100.0
 	if structure:
-		speed = state.number("structure_attack_speed") / 100.0
+		speed = state.stat("structure_attack_speed", context) / 100.0
 	var cooldown = max(2.0, float(stats.get("cooldown", 60.0)))
 	cooldown = max(2.0, int(cooldown * (1.0 + abs(speed)) if speed < 0 else cooldown / (1.0 + speed)))
 	var cycle = max(0.04, cooldown / 60.0 + float(stats.get("animation", 0.0)))
@@ -243,7 +264,7 @@ static func future_income(state, context: Dictionary) -> float:
 	total += future_spend * (count_factor - 1.0)
 	if state.data.currency_kind == "gold":
 		total -= future_spend * state.number("items_price") / 100.0
-	var xp = max(-100.0, state.number("xp_gain")) / 100.0
+	var xp = max(-100.0, state.stat("xp_gain", context)) / 100.0
 	total += xp * horizon * 8.0
 	var luck = max(-100.0, state.stat("stat_luck", context))
 	total += luck / 100.0 * horizon * 4.0
@@ -264,7 +285,9 @@ static func improvement(before: Dictionary, after: Dictionary, context: Dictiona
 	var defense = log(max(1.0, after.ehp) / max(1.0, before.ehp))
 	var offense_weight = clamp(0.55 + deficit * 0.25, 0.55, 1.2)
 	var defense_weight = clamp(0.45 + before.risk * 0.4, 0.45, 1.5)
-	return budget * (offense * offense_weight + defense * defense_weight + (before.risk - after.risk) * 0.4) + after.future_money - before.future_money
+	# Character fit is a bounded adjustment to the combat and economy forecast.
+	var fit = clamp(after.get("affinity", 0.0) - before.get("affinity", 0.0), -3.0, 3.0) * 0.04
+	return budget * (fit + offense * offense_weight + defense * defense_weight + (before.risk - after.risk) * 0.4) + after.future_money - before.future_money
 
 
 static func unique(values: Array) -> Array:

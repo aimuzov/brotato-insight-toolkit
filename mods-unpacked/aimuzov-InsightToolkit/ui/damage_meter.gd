@@ -87,6 +87,13 @@ func refresh(seconds_left: float = -1.0) -> void:
 		move_child(_entries[i].row, i)
 
 
+func finish_wave(log_data) -> void:
+	refresh(0.0)
+	for entry in _entries:
+		if not entry.data is WeaponData:
+			log_data.wave_damage[_player_index][entry.data.my_id_hash] = entry.value
+
+
 func _display_parts(value: float) -> Dictionary:
 	if Settings.enabled("short_numbers"):
 		return Display.parts(value)
@@ -134,7 +141,7 @@ func _add(data: Resource, members: Array = []) -> void:
 	panel._update_stylebox(data.is_cursed, data.tier)
 	_set_count(panel, members.size())
 
-	var previous = _previous.get(Display.family(data)) if data is WeaponData else null
+	var previous = _previous.get(Display.family(data) if data is WeaponData else data.my_id_hash)
 	var entry = {"data": data, "members": members, "row": row, "panel": panel, "label": total.digits, "suffix": total.suffix,
 		"difference": difference, "delta_box": delta_box, "previous": previous, "value": 0.0, "start": 0.0}
 	if not data is WeaponData:
@@ -162,7 +169,7 @@ func _previous_damage() -> Dictionary:
 	var previous = history.get(RunData.current_wave - 1)
 	if previous == null or previous.duration <= 0:
 		return {}
-	var totals = previous.get("weapon_damage")
+	var totals = previous.get("wave_damage")
 	if not totals is Array or _player_index >= totals.size():
 		return {}
 	return totals[_player_index].duplicate()

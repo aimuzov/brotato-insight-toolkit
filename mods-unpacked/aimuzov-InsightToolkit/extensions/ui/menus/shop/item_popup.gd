@@ -68,6 +68,8 @@ func display_item_data(item_data: ItemParentData, attachment: Control, is_invent
 	_dc_owned = is_inventory_element
 	_panel._item_description.set_meta("dc_item_owned", is_inventory_element)
 	.display_item_data(item_data, attachment, is_inventory_element)
+	if is_inventory_element and item_data.my_id == "item_tumor" and attachment.has_method("_dc_tumor_viewed"):
+		attachment._dc_tumor_viewed()
 	_dc_refresh_advice()
 	_dc_sync_popup_layout()
 

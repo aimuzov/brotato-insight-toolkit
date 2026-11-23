@@ -12,5 +12,6 @@ func update_pools(_pool,_backup,_index,_tier,_type):
  pass
 func get_value(_wave,value,_index,_affected,_weapon,_id):
  return value
-func get_stat_small_icon(_key):
- return null
+var small_icons = {}
+func get_stat_small_icon(key):
+ return small_icons.get(key)

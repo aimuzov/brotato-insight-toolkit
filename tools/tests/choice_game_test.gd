@@ -7,6 +7,17 @@ var checks = 0
 var failures = 0
 
 
+class EmptyPetEffect extends Effect:
+	var scene = null
+	func get_id():
+		return "pet"
+
+
+class TumorPlayer:
+	var items = []
+	var recently_mutated = []
+
+
 func check(actual, expected, label):
 	checks += 1
 	if actual != expected:
@@ -47,7 +58,77 @@ func _ready():
 	call_deferred("run")
 
 
+func check_upgrade_height(coop: bool):
+	var card_ui = load(DIR+"extensions/ui/menus/upgrades/upgrade_ui.gd").new()
+	var margin = MarginContainer.new()
+	margin.name = "MarginContainer"
+	card_ui.add_child(margin)
+	margin.add_constant_override("margin_top",20 if coop else 15)
+	margin.add_constant_override("margin_bottom",20 if coop else 15)
+	var column = margin
+	if not coop:
+		column = VBoxContainer.new()
+		column.name = "VBoxContainer"
+		margin.add_child(column)
+	var description = VBoxContainer.new()
+	description.name = "UpgradeDescription"
+	column.add_child(description)
+	description.owner = card_ui
+	description.unique_name_in_owner = true
+	var header = HBoxContainer.new()
+	header.name = "HBoxContainer"
+	header.rect_min_size.x = 280
+	description.add_child(header)
+	var scroll = ScrollContainer.new()
+	scroll.name = "ScrollContainer"
+	scroll.rect_min_size.y = 265
+	description.add_child(scroll)
+	var content = VBoxContainer.new()
+	content.name = "VBoxContainer"
+	content.rect_min_size.y = 35
+	scroll.add_child(content)
+	if not coop:
+		var spacer = Control.new()
+		spacer.name = "EmptySpace"
+		column.add_child(spacer)
+		column.add_child(Button.new())
+	var row = VBoxContainer.new() if coop else HBoxContainer.new()
+	if coop:
+		card_ui.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		row.rect_size.x = 360
+	add_child(row)
+	var taller = Control.new()
+	taller.rect_min_size.y = 420
+	row.add_child(taller)
+	row.add_child(card_ui)
+	row.notification(Container.NOTIFICATION_SORT_CHILDREN)
+	check(card_ui.rect_size.y,card_ui.get_combined_minimum_size().y,"short card keeps its content height beside a taller card")
+	check(card_ui.rect_size.y < taller.rect_size.y,true,"short card has no empty body below the effect")
+	check(margin.get_constant("margin_top") + margin.get_constant("margin_bottom"),16,"compact padding inside the card")
+	check(header.visible,false,"duplicate name and category hidden")
+	if coop:
+		check(card_ui.rect_size.x,360.0,"co-op upgrade fills its player column")
+		row.rect_size.x = 520
+		row.notification(Container.NOTIFICATION_SORT_CHILDREN)
+		check(card_ui.rect_size.x,520.0,"co-op upgrade follows resized player column")
+	else:
+		check(card_ui.rect_min_size.x >= 280,true,"compact card retains width")
+	var padding = scroll.get_stylebox("bg").get_minimum_size().y
+	check(scroll.rect_min_size.y,35 + padding,"upgrade height follows a single effect")
+	if not coop:
+		check(column.get_node("EmptySpace").visible,false,"no spacer above the choose button")
+	content.rect_min_size.y = 400
+	content.emit_signal("minimum_size_changed")
+	check(scroll.rect_min_size.y,265.0,"long upgrade keeps native scroll limit")
+	content.rect_min_size.y = 50
+	content.emit_signal("minimum_size_changed")
+	check(scroll.rect_min_size.y,50 + padding,"reused card shrinks after reroll")
+	row.free()
+
+
 func run():
+	check_upgrade_height(false)
+	check_upgrade_height(true)
 	var NumberSettings = load(DIR+"core/settings.gd")
 	NumberSettings.set_value("short_numbers",true)
 	check(NumberSettings.DEFAULTS.short_numbers,true,"short numbers enabled by default")
@@ -284,13 +365,25 @@ func run():
 	RunData.players_data[0].weapons = [first_weapon,second_weapon,other_weapon]
 	var battle = load(DIR+"core/combat_log.gd").new()
 	battle.finish(60)
-	check(battle.weapon_damage[0]["weapon_test"],4000.0,"finished wave records grouped weapon damage")
+	check(battle.wave_damage[0]["weapon_test"],4000.0,"finished wave records grouped weapon damage")
 	first_weapon.dmg_dealt_last_wave = 0
-	check(battle.weapon_damage[0]["weapon_test"],4000.0,"weapon reset cannot change completed snapshot")
+	check(battle.wave_damage[0]["weapon_test"],4000.0,"weapon reset cannot change completed snapshot")
 	RunData.set_meta("dc_combat_history",{RunData.current_wave-1:battle})
 	var comparison_meter = load(DIR+"ui/damage_meter.gd").new(0)
+	var tracked_item = object("item_mine",[])
+	RunData.tracked_item_effects[0][tracked_item.my_id_hash] = [10, 20]
+	add_child(comparison_meter)
+	comparison_meter._add(tracked_item)
+	RunData.tracked_item_effects[0][tracked_item.my_id_hash] = [25, 30]
+	comparison_meter.finish_wave(battle)
+	var next_meter = load(DIR+"ui/damage_meter.gd").new(0)
+	add_child(next_meter)
+	next_meter._previous = next_meter._previous_damage()
+	next_meter._add(tracked_item)
+	check(next_meter._entries[0].previous,25.0,"item compares against its wave delta across copies")
+	next_meter.free()
 	check(comparison_meter._previous_damage().get("weapon_test"),4000.0,"comparison uses immediately preceding wave")
-	battle.weapon_damage[1]["weapon_test"] = 70.0
+	battle.wave_damage[1]["weapon_test"] = 70.0
 	var other_meter = load(DIR+"ui/damage_meter.gd").new(1)
 	check(other_meter._previous_damage().get("weapon_test"),70.0,"comparison is isolated per player")
 	var saved_wave = RunData.current_wave
@@ -316,7 +409,14 @@ func run():
 	ItemService.pools = {1:[ranged],2:[weapon],4:[crit]}
 	var Catalog = load(DIR+"core/choice_catalog.gd")
 	var catalog = Catalog.new()
+	var shield = object("item_jellyshield", [scalar("jellyshield_count", 1), EmptyPetEffect.new()])
+	check(catalog.item(shield).unknown, [], "shield counter and empty pet effect are fully mapped")
+	check(catalog.item(object("fossil", [scalar("fossil_count", 1)])).unknown, [], "fossil counter is modelled")
+	character.wanted_tags = ["stat_luck", "exploration"]
 	var captured = catalog.capture(0)
+	check(captured.preferences.has("stat_luck"),true,"capture active hero affinity")
+	check(Catalog.character_preferences([], [{"kind":"stat_gains","stats":["stat_armor"],"value":50},
+		{"kind":"stat_gains","stats":["stat_speed"],"value":-50}]),["stat_armor"],"derive preferences from hero gains without shop tags")
 	check(captured.intervals.size(),1,"character intervals captured once")
 	check(captured.link_sources.size(),2,"link provenance captured")
 	check(captured.items.size(),3,"inventory includes character once")
@@ -333,8 +433,45 @@ func run():
 	RunData.players_data[0].current_character = null
 	check(Preview.totals(crit,0,false).empty(),true,"unselected character cannot produce build totals")
 	RunData.players_data[0].current_character = character
+	var dodge = load("res://upgrade.gd").new()
+	var dodge_effect = scalar("stat_dodge",15)
+	dodge.effects = [dodge_effect]
+	var cap_key = Keys.generate_hash("dodge_cap")
+	effects[cap_key] = 30
+	for pair in [[10,15],[25,5],[30,0],[40,0]]:
+		effects[Keys.stat_dodge_hash] = pair[0]
+		var preview = Preview.totals(dodge,0,false)
+		check(preview.changes[dodge_effect],float(pair[1]),"effective dodge gain below and at cap")
+		check(preview[Keys.stat_dodge_hash],min(30,pair[0]+15),"capped dodge total")
+		check(preview.related.rows.empty(),true,"cap cannot create an opposite dodge effect")
+	effects.erase(cap_key)
+	effects.erase(Keys.stat_dodge_hash)
+	var curse = scalar("stat_curse",1)
+	var damage = scalar("stat_percent_damage",3)
+	var shard = object("item_corrupted_shard",[damage,curse])
+	var curse_cap = Keys.generate_hash("curse_cap")
+	for pair in [[0,0],[4,0],[4,10]]:
+		effects[curse.key_hash] = pair[0]
+		effects[curse_cap] = pair[1]
+		var preview = Preview.totals(shard,0,false)
+		check(preview[curse.key_hash],max(pair[0]+1,pair[1]),"shard respects the curse floor")
+		check(preview.changes[curse],max(pair[0]+1,pair[1])-max(pair[0],pair[1]),"shard projects curse gain")
+		check(preview.changes[damage],3.0,"shard damage bonus")
+	effects.erase(curse.key_hash)
+	effects.erase(curse_cap)
+	var mystery = object("item_mystery",[scalar("unknown_{0}",1)])
+	mystery.name = "Талисман"
+	check(catalog.item(mystery).unknown,["Талисман"],"unmodelled effect identifies its item without a raw template")
 	var snapshot = str([effects,RunData.players_data[0].gold,weapon.stats.damage,weapon.effects])
 	var totals = Preview.totals(crit,0,false)
+	var stat_line = EffectLine.new()
+	stat_line.effect = crit.effects[0]
+	Preview.format_line(stat_line,0,totals,true,true)
+	check(stat_line.text_descr.bbcode_text.ends_with("[/color]\u00a0[color=#aaaaaa](15)[/color]"),true,"upgrade change and total stay together")
+	check(stat_line.text_descr.bbcode_text.find("\n[color=")>=0,true,"upgrade numbers start below stat name")
+	Preview.format_line(stat_line,0,{},false,true)
+	check(stat_line.text_descr.bbcode_text.ends_with("\n+5"),true,"upgrade values remain below name with totals disabled")
+	stat_line.free()
 	var modified = scalar("stat_max_hp",3)
 	modified.applied_override = 6
 	check(Preview.totals(object("modified",[modified]),0,false)[Keys.stat_max_hp_hash],36.0,"native applied effect value respected")
@@ -350,6 +487,20 @@ func run():
 	var count = description.effects.get_child_count()
 	Preview.append_related(description,totals,true)
 	check(description.effects.get_child_count(),count,"related preview does not duplicate")
+	totals.preview_unknown = ["Неучтённый эффект"]
+	var luck_key = Keys.generate_hash("stat_luck")
+	var luck_icon = ImageTexture.new()
+	ItemService.small_icons[luck_key] = luck_icon
+	Preview.append_related(description,totals,false,false,true)
+	check(description.effects.get_child_count(),2,"shop only appends changed stats")
+	var impact = description.effects.get_child(1)
+	check(impact.effect_icon.texture,luck_icon,"linked change identified by stat icon")
+	check(impact.text.begins_with("+10 ("),true,"linked change shows gain and total without prose")
+	Preview.append_related(description,{"preview_reason":"Не хватает валюты"},true,false,true)
+	check(description.effects.get_child_count(),1,"unaffordable item has no extra warning row")
+	ItemService.small_icons.erase(luck_key)
+	Preview.append_related(description,totals,true)
+	check(description.effects.get_child_count(),count+1,"full preview still includes unknown effects")
 	var owned = Preview.totals(crit,0,true)
 	check(owned[Keys.stat_crit_chance_hash],10.0,"owned item not reapplied")
 	var Advisor = load(DIR+"core/advisor.gd")
@@ -367,19 +518,77 @@ func run():
 	var shop = load("res://shop.gd").new()
 	add_child(shop)
 	var container = Fixture.new()
+	var shop_column = VBoxContainer.new()
+	var shop_row = HBoxContainer.new()
+	shop.add_child(shop_column)
+	shop_column.add_child(shop_row)
+	shop_row.add_child(container)
 	var shop_card = card(ranged,"ItemDescription")
+	var shop_panel = PanelContainer.new()
+	shop_panel.name = "PanelContainer"
+	shop_card.add_child(shop_panel)
+	shop_card.locked = true
+	shop_card.value = 0
 	container._shop_items = [shop_card]
 	shop.container = container
 	var overlay = load(DIR+"core/shop_overlay.gd").new(shop,0)
 	overlay.refresh()
-	check(shop_card.get_node("%ItemDescription").texts().length()>0,true,"shop advice rendered")
+	var shop_frame = shop_panel.get_node_or_null("DcRecommended")
+	check(shop_frame != null and shop_frame.visible,true,"profitable item highlighted")
+	check(shop_card.get_node("%ItemDescription").effects.get_child_count(),1,"buy recommendation has no extra line")
+	shop_card.active = false
+	overlay.refresh()
+	check(shop_frame != null and not shop_frame.visible,true,"sold slot loses the frame")
+	shop_card.active = true
+	overlay.refresh()
+	shop_card.item_data = object("no_benefit",[])
+	shop_card.value = 20
+	overlay.refresh()
+	overlay.refresh()
+	check(shop_card.get_node("%ItemDescription").texts(),"","saving advice omitted from item")
+	check(shop_column.get_child_count(),1,"no separate shop advice row")
+	var wave_frame = shop.go.get_node("DcRecommended")
+	check(wave_frame.visible,true,"saving highlights next wave")
+	shop_card.locked = false
+	shop._reroll_price[0] = 0
+	ItemService.pools[1] = [object("strong_reroll",[scalar("stat_ranged_damage",100)])]
+	overlay.refresh()
+	var reroll_frame = shop.reroll.get_node_or_null("DcRecommended")
+	check(reroll_frame != null and reroll_frame.visible,true,"winning reroll highlights its button")
+	check(wave_frame.visible,false,"reroll clears the wave highlight")
+	shop_card.item_data = object("unknown_item",[scalar("unknown_effect",1)])
+	overlay.refresh()
+	check(reroll_frame.visible and not wave_frame.visible,true,"free replacement highlighted despite unknown offer")
+	shop.reroll.disabled = true
+	overlay.refresh()
+	check(wave_frame.visible and not reroll_frame.visible,true,"unknown offer cannot suppress next wave fallback")
+	check(shop_card.get_node("%ItemDescription").effects.get_child_count(),1,"unknown shop offer keeps only its native description")
+	shop.reroll.disabled = false
+	shop_card.item_data = ranged
+	shop_card.value = 0
+	overlay.refresh()
+	check(shop_frame.visible,true,"profitable item takes priority over reroll")
+	check(reroll_frame != null and not reroll_frame.visible,true,"buying clears reroll highlight")
+	ItemService.pools[1] = [ranged]
 	Settings.set_value("advice",false)
 	overlay.refresh()
 	check(shop_card.get_node("%ItemDescription").effects.get_child_count(),1,"shop advice clears")
+	check(not wave_frame.visible and not shop_frame.visible,true,"disabled advice clears highlights")
 	Settings.set_value("advice",true)
 	var main = load(DIR+"extensions/main.gd").new()
 	main._dc_advisor = advisor
 	main._dc_settings = Settings
+	container._item_description = Description.new()
+	container._item_data = object("uninspiring",[])
+	container._item_data.value = 100
+	main._dc_advise_reward(container)
+	var discard_frame = container._discard_button.get_node_or_null("DcRecommended")
+	check(discard_frame != null and discard_frame.visible,true,"recommended discard marked on button")
+	check(container._item_description.effects.get_child_count(),1,"no duplicate recycle value in description")
+	container._discard_button.hide()
+	main._dc_advise_reward(container)
+	check(discard_frame != null and not discard_frame.visible,true,"unavailable discard loses its frame")
+	container._item_description.free()
 	var upgrades = Fixture.new()
 	var upgrade_card = card(crit,"UpgradeDescription")
 	var other_card = card(ranged,"UpgradeDescription")
@@ -388,43 +597,21 @@ func run():
 	Utils.focused_control = upgrade_card.button
 	main._dc_advise_container(upgrades)
 	check(upgrade_card.get_node("%UpgradeDescription").texts(),"","upgrade advice removed from card")
-	var upgrade_popup = main._dc_upgrade_popups[upgrades.get_instance_id()]
-	upgrade_popup.refresh()
-	check(upgrade_popup._panel.visible,true,"focused upgrade shows popup")
-	check(upgrade_popup._current_card,upgrade_card,"popup follows first focus")
-	check(upgrade_popup._content.get_child_count()>0,true,"popup renders recommendation")
-	check(upgrade_popup._panel.mouse_filter,Control.MOUSE_FILTER_IGNORE,"popup does not intercept mouse")
-	Utils.focused_control = other_card.button
-	upgrade_popup.refresh()
-	check(upgrade_popup._current_card,other_card,"popup follows changed focus without recalculating")
-	Utils.focused_control = upgrades._reroll_button
-	upgrade_popup.refresh()
-	check(upgrade_popup._panel.visible,false,"reroll focus hides popup")
-	Utils.focused_control = upgrade_card.button
-	upgrades._upgrades_container.hide()
-	upgrade_popup.refresh()
-	check(upgrade_popup._panel.visible,false,"hidden upgrade screen hides popup")
-	upgrades._upgrades_container.show()
-	upgrade_card.upgrade_data = ranged
-	upgrade_popup.refresh()
-	check(upgrade_popup._panel.visible,false,"replaced upgrade cannot show stale advice")
-	main._dc_advise_container(upgrades)
-	upgrade_popup.refresh()
-	check(upgrade_popup._panel.visible,true,"new analysis refreshes popup")
-	var Popup = upgrade_popup.get_script()
-	var bounds = Rect2(0,0,1000,700)
-	check(Popup.position_for(Rect2(100,100,200,300),Vector2(250,150),bounds).x>300,true,"popup prefers right side")
-	check(Popup.position_for(Rect2(800,600,180,80),Vector2(250,150),bounds).x<800,true,"popup flips at right edge")
-	check(Popup.position_for(Rect2(800,600,180,80),Vector2(250,150),bounds).y<=550,true,"popup stays above bottom edge")
+	var expected = advisor.analyze([crit,ranged],[0,0],0,{"mode":"upgrade","level":5,"price":4,"draws":2,"excluded":[crit.my_id,ranged.my_id],"available":true})
+	for i in upgrades.uis.size():
+		var marker = upgrades.uis[i].get_node_or_null("DcRecommended")
+		check(marker != null and marker.visible,expected.cards[i].recommended,"recommended option marked without hover")
+	load(DIR+"ui/style.gd").mark_choice(upgrade_card,true)
+	var frame = upgrade_card.get_node("DcRecommended")
+	check(frame.mouse_filter,Control.MOUSE_FILTER_IGNORE,"border allows mouse selection")
+	check(frame.get_stylebox("panel").draw_center,false,"border leaves the stat visible")
 	Settings.set_value("advice",false)
 	main._dc_advise_container(upgrades)
-	check(upgrade_card.get_node("%UpgradeDescription").effects.get_child_count(),1,"upgrade advice clears")
-	check(upgrade_popup._panel.visible,false,"disabled analyzer hides popup")
+	check(frame.visible,false,"disabled analyzer clears highlight")
 	Settings.set_value("advice",true)
 	RunData.is_coop_run = true
 	main._dc_advise_container(upgrades)
-	check(upgrade_card.get_node("%UpgradeDescription").texts().length()>0,true,"coop keeps existing inline advice")
-	check(upgrade_popup._panel.visible,false,"coop cannot create overlapping popups")
+	check(upgrade_card.get_node("%UpgradeDescription").texts(),"","coop uses the same text-free recommendation")
 	RunData.is_coop_run = false
 	var popup = load(DIR+"extensions/ui/menus/shop/item_popup.gd").new()
 	var panel = Fixture.new()
@@ -440,6 +627,59 @@ func run():
 	popup._dc_refresh_advice()
 	check(panel._item_description.effects.get_child_count(),1,"sale advice clears")
 	check(str([effects,RunData.players_data[0].gold,weapon.stats.damage,weapon.effects]),snapshot,"all integrations preserve actual state")
+	var players = RunData.players_data
+	RunData.players_data = [TumorPlayer.new(),TumorPlayer.new()]
+	var tumors = []
+	var icons = []
+	for index in 2:
+		var tumor = object("item_tumor",[scalar("stat_luck",3)])
+		RunData.players_data[index].items.append(tumor)
+		RunData.players_data[index].recently_mutated.append(tumor)
+		tumors.append(tumor)
+		var icon = load(DIR+"extensions/items/global/inventory_element.gd").new()
+		add_child(icon)
+		icon.set_element(tumor)
+		icons.append(icon)
+		check(icon._recently_mutated.visible,false,"tumor hides native green marker")
+		check(icon._dc_unread_frame.visible,true,"unread tumor marked for either owner")
+	popup.display_item_data(tumors[1],icons[1],true)
+	check(icons[1]._dc_unread_frame.visible,false,"opening the second player's tumor clears the frame immediately")
+	check(icons[0]._dc_unread_frame.visible,true,"first player's tumor remains unread")
+	icons[1].set_element(tumors[1])
+	check(icons[1]._dc_unread_frame.visible,false,"rebuilding the same effects preserves read status")
+	tumors[1].effects[0].value += 1
+	icons[1].set_element(tumors[1])
+	check(icons[1]._dc_unread_frame.visible,true,"changed mutation is unread again")
+	var Notice = load(DIR+"ui/tumor_notification.gd")
+	var counter = scalar("",1)
+	counter.text_key = "EFFECT_TUMOR_MUTATION_COUNT"
+	tumors[1].effects.push_front(counter)
+	Notice.remember(0)
+	Notice.remember(1)
+	counter.value += 1
+	tumors[1].effects[1].value += 2
+	tumors[1].effects.append(scalar("stat_speed",3))
+	check(Notice.take_changes(0),[],"unchanged player receives no mutation notice")
+	var notices = Notice.take_changes(1)
+	check(notices,["stat_luck +6","stat_speed +3"],"show new totals of merged and new effects")
+	check(Notice.take_changes(1),[],"reopening the shop does not repeat notice")
+	var toast = Notice.new(notices)
+	add_child(toast)
+	check(toast._message.bbcode_text,"Теперь: stat_luck +6","first mutation visible on arrival")
+	toast._next()
+	check(toast._message.bbcode_text,"Теперь: stat_speed +3","subsequent change visible")
+	toast._next()
+	check(toast.is_queued_for_deletion(),true,"notice closes after final effect")
+	RunData.players_data[1].items.clear()
+	Notice.remember(1)
+	RunData.players_data[1].items.append(tumors[1])
+	Notice.show_in_shop(shop,1)
+	Notice.show_in_shop(shop,1)
+	check(shop_column.get_child_count(),2,"first tumor gets one notice in its shop layout")
+	check(shop_column.get_child(1)._message.bbcode_text,"Теперь: stat_luck +6","shop notice contains the actual effect")
+	for icon in icons:
+		icon.free()
+	RunData.players_data = players
 	main.free()
 	upgrades.free()
 	container.free()

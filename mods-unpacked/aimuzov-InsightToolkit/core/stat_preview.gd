@@ -7,19 +7,15 @@ const Dependencies = preload("stat_dependencies.gd")
 
 
 static func totals(item_data: Resource, player_index: int, owned: bool, price: float = 0.0) -> Dictionary:
-	var deltas = {}
-	if item_data == null or player_index < 0 or player_index >= RunData.get_player_count():
-		return deltas
-	if item_data.my_id.begins_with("character_") or item_data.my_id.begins_with("difficulty_") or RunData.get_player_character(player_index) == null:
-		return deltas
-	for effect in item_data.effects:
-		if not _is_stat(effect):
-			continue
-		deltas[effect.key_hash] = deltas.get(effect.key_hash, 0.0) + effect.get_applied_value(player_index)
 	var result = {}
+	if item_data == null or player_index < 0 or player_index >= RunData.get_player_count():
+		return result
+	if item_data.my_id.begins_with("character_") or item_data.my_id.begins_with("difficulty_") or RunData.get_player_character(player_index) == null:
+		return result
 	if owned:
-		for key in deltas:
-			result[key] = Utils.get_stat(key, player_index)
+		for effect in item_data.effects:
+			if _is_stat(effect):
+				result[effect.key_hash] = Utils.get_stat(effect.key_hash, player_index)
 		return result
 	var catalog = Catalog.new()
 	var data = cached_data(catalog, player_index)
@@ -30,11 +26,20 @@ static func totals(item_data: Resource, player_index: int, owned: bool, price: f
 	var after = before.fork()
 	var applied = after.apply({"kind": "buy", "item": definition, "cost": price})
 	var direct = {}
-	for key in deltas:
-		var name = Catalog.key_name(key)
-		direct[name] = deltas[key] * RunData.get_stat_gain(key, player_index)
-		result[key] = after.stat(name, {"preview": true}) if applied.ok else Utils.get_stat(key, player_index)
-	result["related"] = Dependencies.project(before, after, direct, {"preview": true}) if applied.ok else {"rows": [], "notes": []}
+	var context = {"preview": true}
+	result["changes"] = {}
+	var accumulated = {}
+	for effect in item_data.effects:
+		if not _is_stat(effect):
+			continue
+		var name = Catalog.key_name(effect.key_hash)
+		var previous = accumulated.get(name, 0.0)
+		accumulated[name] = previous + effect.get_applied_value(player_index)
+		var projected = before.stat_with_bonus(name, context, accumulated[name]) - before.stat(name, context)
+		result.changes[effect] = projected - direct.get(name, 0.0)
+		direct[name] = projected
+		result[effect.key_hash] = after.stat(name, context) if applied.ok else Utils.get_stat(effect.key_hash, player_index)
+	result["related"] = Dependencies.project(before, after, direct, context) if applied.ok else {"rows": [], "notes": []}
 	if applied.ok and data.currency_kind == "hp" and price > 0:
 		for row in result.related.rows:
 			if row.key == "stat_max_hp":
@@ -61,7 +66,7 @@ static func cached_data(catalog, player_index: int) -> Dictionary:
 	return data.duplicate(true)
 
 
-static func append_related(description: Node, values: Dictionary, colored: bool) -> void:
+static func append_related(description: Node, values: Dictionary, colored: bool, upgrade: bool = false, shop_card: bool = false) -> void:
 	var effects = description.get_effects()
 	for child in effects.get_children():
 		if child.name.begins_with("DcStatImpact"):
@@ -74,10 +79,19 @@ static func append_related(description: Node, values: Dictionary, colored: bool)
 		if colored:
 			var color = ProgressData.settings.color_positive if row.delta > 0 else ProgressData.settings.color_negative
 			delta = "[color=#%s]%s[/color]" % [color, delta]
-		var text = "%s%s %s (%s%s)" % ["Дополнительно: " if row.additional else "", label.name, delta, str(stepify(row.after, 0.1)), label.suffix]
+		var icon = ItemService.get_stat_small_icon(Keys.generate_hash(row.key))
+		if shop_card:
+			var text = "%s (%s%s)" % [delta, str(stepify(row.after, 0.1)), label.suffix]
+			if icon == null:
+				text = label.name + " " + text
+			append_line(description, text, icon)
+			continue
+		var text = ("Дополнительно: " if row.additional else "") + _stat_text(label.name, delta, str(stepify(row.after, 0.1)) + label.suffix, upgrade, colored)
 		if not row.sources.empty():
 			text += ": " + PoolStringArray(row.sources).join(", ")
-		append_line(description, text, ItemService.get_stat_small_icon(Keys.generate_hash(row.key)))
+		append_line(description, text, icon)
+	if shop_card:
+		return
 	for note in related.notes:
 		var name = stat_label(note.from).name
 		var source = PoolStringArray(note.sources).join(", ") if not note.sources.empty() else stat_label(note.to).name
@@ -109,23 +123,35 @@ static func stat_label(key: String) -> Dictionary:
 	return {"name": text.trim_prefix("% ").strip_edges(), "suffix": "%" if text.find("%") >= 0 else ""}
 
 
-static func format_line(line: Node, player_index: int, values: Dictionary, colored: bool) -> void:
+static func format_line(line: Node, player_index: int, values: Dictionary, colored: bool, upgrade: bool = false) -> void:
 	var effect = line.effect
-	if not _is_stat(effect) or not values.has(effect.key_hash):
+	if not _is_stat(effect) or (not upgrade and not values.has(effect.key_hash)):
 		return
 	var icon = ItemService.get_stat_small_icon(effect.key_hash)
-	if icon == null:
+	if icon == null and not upgrade:
 		return
-	var value = effect.get_applied_value(player_index)
+	var value = values.get("changes", {}).get(effect, effect.get_applied_value(player_index))
 	var name = DcTranslations.text(effect.key.to_upper())
 	var suffix = "%" if name.find("%") >= 0 else ""
 	name = name.trim_prefix("% ").strip_edges()
-	var change = ("+" if value > 0 else "") + str(value) + suffix
+	var change = ("+" if value > 0 else "") + str(stepify(value, 0.1)) + suffix
 	if colored:
 		var color = _color(effect, value)
 		change = "[color=#%s]%s[/color]" % [color.to_html(false), change]
-	line.effect_icon.texture = icon
-	line.text_descr.bbcode_text = "%s %s (%d%s)" % [name, change, int(values[effect.key_hash]), suffix]
+	if icon != null:
+		line.effect_icon.texture = icon
+	var total = "%d%s" % [int(values[effect.key_hash]), suffix] if values.has(effect.key_hash) else ""
+	line.text_descr.bbcode_text = _stat_text(name, change, total, upgrade, colored)
+
+
+static func _stat_text(name: String, change: String, total: String, upgrade: bool, colored: bool) -> String:
+	var text = name + ("\n" if upgrade else " ") + change
+	if total != "":
+		var result = "(" + total + ")"
+		if upgrade and colored:
+			result = "[color=#aaaaaa]%s[/color]" % result
+		text += ("\u00a0" if upgrade else " ") + result
+	return text
 
 
 static func _is_stat(effect: Resource) -> bool:

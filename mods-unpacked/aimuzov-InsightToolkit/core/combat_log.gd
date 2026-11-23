@@ -11,7 +11,7 @@ const DamageDisplay = preload("res://mods-unpacked/aimuzov-InsightToolkit/core/d
 # players[i][enemy_key] = {icon, dealt, taken, kills}
 var players = []
 var metrics = []
-var weapon_damage = []
+var wave_damage = []
 var duration = 0.0
 
 var _hp_before = {}
@@ -21,8 +21,8 @@ var _hp_last = {}
 func _init() -> void:
 	for i in MAX_PLAYERS:
 		players.push_back({})
-		weapon_damage.push_back({})
-		metrics.push_back({"hits": 0, "taken": 0.0, "max_hit": 0.0, "healed": 0.0, "kills": 0, "dealt": 0.0, "hp": 0.0, "gold_start": 0, "income": 0.0, "armor": 1.0, "dodge": 0.0})
+		wave_damage.push_back({})
+		metrics.push_back({"projectile_damage": 0.0, "hitbox_damage": 0.0, "gold_pickups": 0, "hits": 0, "taken": 0.0, "max_hit": 0.0, "healed": 0.0, "kills": 0, "dealt": 0.0, "hp": 0.0, "gold_start": 0, "income": 0.0, "armor": 1.0, "dodge": 0.0})
 
 
 func track_enemy(enemy: Node, owner: Object) -> void:
@@ -86,16 +86,21 @@ func finish(seconds: float) -> void:
 	duration = seconds
 	for index in RunData.get_player_count():
 		metrics[index].income = max(0, RunData.get_player_gold(index) - metrics[index].gold_start)
-		weapon_damage[index].clear()
+		wave_damage[index].clear()
 		for group in DamageDisplay.weapons(RunData.get_player_weapons(index)):
-			weapon_damage[index][group.key] = DamageDisplay.damage(group.members)
+			wave_damage[index][group.key] = DamageDisplay.damage(group.members)
 
 
 # Источник урона по игроку — враг из hitbox.from (сам враг или хозяин его снаряда)
 func on_player_took_damage(player: Node, value: int, args) -> void:
-	if not Settings.enabled("creep_stats"):
-		return
 	if value <= 0 or args == null or args.hitbox == null:
+		return
+	var record = metrics[player.player_index]
+	record.hitbox_damage += value
+	# The Jellyshield hurtbox detects collision layer 5 (mask 16).
+	if args.hitbox.get_collision_layer_bit(4):
+		record.projectile_damage += value
+	if not Settings.enabled("creep_stats"):
 		return
 	var source = args.hitbox.from
 	if not is_instance_valid(source) or source.get("stats") == null:

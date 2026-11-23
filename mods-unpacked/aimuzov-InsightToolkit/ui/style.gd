@@ -41,3 +41,28 @@ static func stat_icon(stat_hash: int):
 
 static func num(value: float) -> String:
 	return Text.get_formatted_number(int(round(value)))
+
+
+static func advice_label(text: String, primary: bool) -> Label:
+	var result = label(text, 20 if primary else 18, BEST if primary else Color.white)
+	result.autowrap = true
+	result.max_lines_visible = 2
+	return result
+
+
+static func mark_choice(control: Control, recommended: bool) -> void:
+	var frame = control.get_node_or_null("DcRecommended")
+	if recommended and frame == null:
+		var border = StyleBoxFlat.new()
+		border.draw_center = false
+		border.border_color = BEST
+		border.set_border_width_all(3)
+		border.set_corner_radius_all(8)
+		frame = Panel.new()
+		frame.name = "DcRecommended"
+		frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		frame.add_stylebox_override("panel", border)
+		control.add_child(frame)
+		frame.set_anchors_and_margins_preset(Control.PRESET_WIDE)
+	if frame != null:
+		frame.visible = recommended

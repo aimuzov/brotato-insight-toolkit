@@ -1,12 +1,12 @@
 extends "res://main.gd"
 
 const DC_DIR = "res://mods-unpacked/aimuzov-InsightToolkit/"
+const DcStyle = preload("res://mods-unpacked/aimuzov-InsightToolkit/ui/style.gd")
 const DC_UPDATE_INTERVAL = 0.5
 
 var _dc_log
 var _dc_advisor
 var _dc_upgrades_keys = {}
-var _dc_upgrade_popups = {}
 var _dc_settings
 var _dc_meters = []
 
@@ -16,6 +16,8 @@ func _ready() -> void:
 
 
 func _dc_setup() -> void:
+	for index in RunData.get_player_count():
+		preload("res://mods-unpacked/aimuzov-InsightToolkit/ui/tumor_notification.gd").remember(index)
 	_dc_settings = load(DC_DIR + "core/settings.gd")
 	add_child(load(DC_DIR + "core/wave_speed.gd").new(_wave_timer))
 	_dc_setup_damage_meter()
@@ -100,6 +102,12 @@ func _dc_setup_combat_log() -> void:
 			Engine.remove_meta("dc_choice_shop_%d" % index)
 
 
+func on_gold_picked_up(gold: Node, player_index: int) -> void:
+	if _dc_log != null and not gold.already_picked_up and player_index >= 0 and player_index < _dc_log.metrics.size():
+		_dc_log.metrics[player_index].gold_pickups += 1
+	.on_gold_picked_up(gold, player_index)
+
+
 func _dc_finish_choice_metrics() -> void:
 	call_deferred("_dc_save_choice_metrics")
 
@@ -108,7 +116,7 @@ func _dc_save_choice_metrics() -> void:
 	_dc_log.finish(_wave_timer.wait_time)
 	for meter in _dc_meters:
 		if is_instance_valid(meter):
-			meter.refresh(0.0)
+			meter.finish_wave(_dc_log)
 
 
 func _dc_on_player_health_updated(player: Node, health: int, _max_health: int) -> void:
@@ -154,29 +162,22 @@ func _dc_advise_upgrades() -> void:
 
 func _dc_advise_container(container: Node) -> void:
 	var player_index = container.player_index
-	var popup = _dc_upgrade_popups.get(container.get_instance_id())
-	if not RunData.is_coop_run and not is_instance_valid(popup):
-		popup = load(DC_DIR + "ui/upgrade_advice_popup.gd").new(container)
-		container.add_child(popup)
-		_dc_upgrade_popups[container.get_instance_id()] = popup
 	var uis = []
 	var enabled = _dc_settings.enabled("advice")
-	var key = str(enabled) + str(RunData.is_coop_run) + str(RunData.get_player_gold(player_index)) + ":" + str(container._reroll_price)
+	var key = str(enabled) + str(container._reroll_button.visible) + str(RunData.is_coop_run) + str(RunData.get_player_gold(player_index)) + ":" + str(container._reroll_price)
 	for upgrade_ui in container._get_upgrade_uis():
 		if upgrade_ui.visible and upgrade_ui.upgrade_data != null:
 			uis.push_back(upgrade_ui)
-			key += str(upgrade_ui.upgrade_data.get_instance_id()) + ","
+			key += str(upgrade_ui.get_instance_id()) + ":" + str(upgrade_ui.upgrade_data.get_instance_id()) + ","
 			var description = upgrade_ui.get_node("%UpgradeDescription")
 			key += str(description.get_meta("dc_description_version") if description.has_meta("dc_description_version") else 0)
 	if key == _dc_upgrades_keys.get(container.get_instance_id(), ""):
 		return
 	_dc_upgrades_keys[container.get_instance_id()] = key
-	for upgrade_ui in uis:
-		_dc_advisor.clear_description(upgrade_ui.get_node("%UpgradeDescription"))
-
 	if not enabled:
-		if is_instance_valid(popup):
-			popup.clear()
+		for ui in container._get_upgrade_uis():
+			DcStyle.mark_choice(ui, false)
+		DcStyle.mark_choice(container._reroll_button, false)
 		return
 	var resources = []
 	var prices = []
@@ -189,14 +190,9 @@ func _dc_advise_container(container: Node) -> void:
 		"mode": "upgrade", "level": container._level, "price": container._reroll_price,
 		"draws": uis.size(), "excluded": excluded, "available": container._reroll_button.visible,
 	})
-	if RunData.is_coop_run:
-		if is_instance_valid(popup):
-			popup.clear()
-		for i in uis.size():
-			_dc_advisor.write_to_description(uis[i].get_node("%UpgradeDescription"), result.cards[i])
-	else:
-		popup.set_cards(uis, result.cards, _dc_advisor)
-
+	for i in uis.size():
+		DcStyle.mark_choice(uis[i], result.cards[i].recommended)
+	DcStyle.mark_choice(container._reroll_button, result.roll_wins)
 
 
 func _dc_advise_reward(container: Node) -> void:
@@ -205,14 +201,18 @@ func _dc_advise_reward(container: Node) -> void:
 		return
 	var player_index = container.player_index
 	var enabled = _dc_settings.enabled("advice")
-	var key = "reward:" + str(enabled) + ":" + str(item.get_instance_id())
+	var key = "reward:" + str(container._discard_button.visible) + str(enabled) + ":" + str(item.get_instance_id())
 	var description = container._item_description
 	key += ":" + str(description.get_meta("dc_description_version") if description.has_meta("dc_description_version") else 0)
 	if key == _dc_upgrades_keys.get(container.get_instance_id(), ""):
 		return
 	_dc_upgrades_keys[container.get_instance_id()] = key
 	_dc_advisor.clear_description(description)
+	DcStyle.mark_choice(container._discard_button, false)
 	if not enabled:
 		return
 	var result = _dc_advisor.evaluate_reward(item, player_index, container._discard_button.visible)
-	_dc_advisor.write_to_description(description, result)
+	if result.get("recommend_discard", false):
+		DcStyle.mark_choice(container._discard_button, true)
+	else:
+		_dc_advisor.write_to_description(description, result)

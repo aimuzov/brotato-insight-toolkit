@@ -27,7 +27,7 @@ func plan(data: Dictionary, offers: Array, context: Dictionary, reroll: Dictiona
 		for index in offers.size():
 			var purchase = {"kind": "buy", "item": offers[index], "cost": offers[index].get("price", 0.0)}
 			var replacement = route(initial, [sale, purchase], baseline, context, shadow)
-			if replacement.value > cards[index].value + EPSILON:
+			if _better_purchase(replacement, cards[index]):
 				cards[index] = replacement
 			if replacement.value > sales[uid].value + EPSILON:
 				sales[uid] = replacement
@@ -35,7 +35,7 @@ func plan(data: Dictionary, offers: Array, context: Dictionary, reroll: Dictiona
 	if context.get("mode", "shop") == "shop":
 		_search_purchases(initial, offers, [], [], baseline, context, shadow, cards)
 	for card in cards:
-		if card.value > best.value:
+		if card.value > best.value and (context.get("mode", "shop") != "shop" or card.confidence != "low"):
 			best = card
 	var roll = estimate_reroll(initial, baseline, context, reroll, shadow)
 	var can_roll = reroll.get("available", false) and data.get("cash", 0.0) >= reroll.get("price", 0.0)
@@ -44,6 +44,11 @@ func plan(data: Dictionary, offers: Array, context: Dictionary, reroll: Dictiona
 		if card.ok and card.confidence == "low":
 			roll_wins = false
 			roll.reason = "Не все эффекты текущих вариантов оценены"
+	if context.get("mode", "shop") == "shop":
+		if best.value > EPSILON:
+			roll_wins = false
+		elif can_roll and reroll.get("draws", 0) > 0 and reroll.get("price", 0.0) == 0:
+			roll_wins = true
 	var best_mandatory = -1
 	var best_mandatory_value = -INF
 	for index in cards.size():
@@ -52,6 +57,8 @@ func plan(data: Dictionary, offers: Array, context: Dictionary, reroll: Dictiona
 			best_mandatory_value = cards[index].value
 	for index in cards.size():
 		var card = cards[index]
+		card["recommended"] = false
+		card["save_currency"] = false
 		if not card.ok:
 			card["decision"] = card.get("reason", "Недоступно")
 		elif card.confidence == "low":
@@ -59,14 +66,17 @@ func plan(data: Dictionary, offers: Array, context: Dictionary, reroll: Dictiona
 		elif roll_wins:
 			card["decision"] = "Реролл выгоднее по оценке"
 		elif card.value > EPSILON and abs(card.value - best.value) <= EPSILON:
+			card.recommended = true
 			card["decision"] = "Купить по расчёту" if context.get("mode", "shop") == "shop" else "Выбрать по расчёту"
 			if card.actions.size() > 1:
 				card.decision = "Выгодная замена" if card.actions[0].kind == "sell" else "Выгодно вместе"
 		elif context.get("mode", "shop") == "upgrade" and not roll_wins and best_mandatory >= 0:
-			card["decision"] = "Лучший из доступных" if abs(card.value - best_mandatory_value) <= EPSILON else "Есть вариант выгоднее"
+			card.recommended = abs(card.value - best_mandatory_value) <= EPSILON
+			card["decision"] = "Лучший из доступных" if card.recommended else "Есть вариант выгоднее"
 		elif card.value > EPSILON:
 			card["decision"] = "Есть вариант выгоднее"
 		else:
+			card.save_currency = true
 			card["decision"] = "Сохранить материалы" if data.get("currency_kind", "gold") == "gold" else "Сохранить детали"
 	for uid in sales:
 		var sale = sales[uid]
@@ -82,6 +92,14 @@ func plan(data: Dictionary, offers: Array, context: Dictionary, reroll: Dictiona
 		"spent": best.get("spent", 0.0), "reroll": roll, "roll_wins": roll_wins}
 
 
+func _better_purchase(candidate: Dictionary, current: Dictionary) -> bool:
+	var candidate_buy = candidate.value > EPSILON and candidate.confidence != "low"
+	var current_buy = current.value > EPSILON and current.confidence != "low"
+	if candidate_buy != current_buy:
+		return candidate_buy
+	return candidate.value > current.value + EPSILON
+
+
 func _search_purchases(initial, offers: Array, used: Array, actions: Array, baseline: Dictionary, context: Dictionary, shadow: float, cards: Array) -> void:
 	for index in offers.size():
 		if used.has(index) or _search_steps >= MAX_PURCHASE_STATES:
@@ -95,7 +113,7 @@ func _search_purchases(initial, offers: Array, used: Array, actions: Array, base
 		var next_used = used.duplicate()
 		next_used.push_back(index)
 		for included in next_used:
-			if result.value > cards[included].value + EPSILON:
+			if _better_purchase(result, cards[included]):
 				cards[included] = result.duplicate(true)
 		_search_purchases(initial, offers, next_used, next_actions, baseline, context, shadow, cards)
 
