@@ -13,6 +13,7 @@ func _init() -> void:
 	ModLoaderMod.install_script_extension(_dir.plus_file("extensions/main.gd"))
 	ModLoaderMod.install_script_extension(_dir.plus_file("extensions/items/global/inventory_element.gd"))
 	ModLoaderMod.install_script_extension(_dir.plus_file("extensions/ui/menus/shop/meca_parts_ui.gd"))
+	ModLoaderMod.install_script_extension(_dir.plus_file("extensions/ui/menus/upgrades/upgrade_ui.gd"))
 	ModLoaderMod.install_script_extension(_dir.plus_file("extensions/ui/menus/shop/item_description.gd"))
 	ModLoaderMod.install_script_extension(_dir.plus_file("extensions/ui/menus/shop/item_popup.gd"))
 	ModLoaderMod.install_script_extension(_dir.plus_file("extensions/ui/menus/shop/stat_container.gd"))

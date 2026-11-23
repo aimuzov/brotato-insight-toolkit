@@ -167,16 +167,25 @@ func stat(key: String, context: Dictionary = {}) -> float:
 		_stat_context = context
 	if _stat_cache.has(key):
 		return _stat_cache[key]
+	var value = stat_with_bonus(key, context, 0.0)
+	_stat_cache[key] = value
+	return value
+
+
+func stat_with_bonus(key: String, context: Dictionary, raw_bonus: float) -> float:
 	var value = raw_stat(key) + temporary_stat(key, context)
 	var gain = 1.0 + number("gain_" + key) / 100.0
 	for link in data.effects.get("stat_links", []):
 		if link.size() < 5 or link[0] != key or float(link[3]) == 0.0:
 			continue
 		value += int(float(link[1]) * scaled_value(str(link[2]), context, bool(link[4])) / float(link[3])) * gain
-	var caps = {"stat_max_hp": "hp_cap", "stat_speed": "speed_cap", "stat_dodge": "dodge_cap", "stat_curse": "curse_cap", "stat_crit_chance": "crit_chance_cap"}
+	value += raw_bonus * gain
+	# Для проклятия игра использует get_max_capped_stat: curse_cap задаёт нижнюю границу.
+	if key == "stat_curse":
+		return max(value, number("curse_cap"))
+	var caps = {"stat_max_hp": "hp_cap", "stat_speed": "speed_cap", "stat_dodge": "dodge_cap", "stat_crit_chance": "crit_chance_cap"}
 	if caps.has(key):
 		value = min(value, number(caps[key], 1000000.0))
-	_stat_cache[key] = value
 	return value
 
 
@@ -235,7 +244,7 @@ func scaled_value(key: String, context: Dictionary, permanent_only: bool = true)
 			if key == "structure":
 				count += item_count("item_pocket_factory")
 			else:
-				count += int(number("stat_jellyshield_count"))
+				count += int(number("jellyshield_count"))
 			return float(count)
 		"living_enemy", "burning_enemy", "living_tree", "percent_player_missing_health":
 			return context.get(key, 0.0)

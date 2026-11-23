@@ -60,6 +60,8 @@ func run():
 		check(false, true, "choice engine exists")
 		get_tree().quit(1)
 		return
+	check_hero_preferences()
+	check_special_items()
 	var original = build()
 	var state = State.new(original)
 	var hp = item("hp", [effect("stat_max_hp", 10)])
@@ -193,7 +195,7 @@ func run():
 	check(not uncertain.cards[0].decision in ["Пропустить", "Продать", "Разобрать"], true, "no decisive negative advice for unknown effect")
 	var unknown_roll = planner.plan(build(), [unknown], context(), {"available": true, "price": 0.0, "draws": 4,
 		"outcomes": [{"value": 100.0, "weight": 1.0}], "coverage": 1.0})
-	check(unknown_roll.roll_wins, false, "unknown current option prevents confident reroll")
+	check(unknown_roll.roll_wins, true, "free shop reroll remains available with unknown effects")
 	var owns_unknown = build()
 	owns_unknown.items = [unknown.duplicate(true)]
 	var second_unknown = planner.plan(owns_unknown,[unknown],context(),{})
@@ -285,3 +287,54 @@ func run():
 	print("Large inventory planning: ", (OS.get_ticks_usec()-started)/1000.0, " ms")
 	print("Choice engine: ", checks, " checks, ", failures, " failures")
 	get_tree().quit(1 if failures else 0)
+
+
+func check_special_items():
+	var state = State.new(build())
+	var environment = context()
+	environment.projectile_fraction = 0.0
+	var baseline = Model.evaluate(state, environment)
+	state.data.effects.jellyshield_count = 1
+	var melee = Model.evaluate(state, environment)
+	near(melee.incoming, baseline.incoming, "shield cannot block melee")
+	environment.projectile_fraction = 1.0
+	var ranged = Model.evaluate(state, environment)
+	check(ranged.incoming < melee.incoming and ranged.ehp > melee.ehp, true, "projectile interception improves defense")
+	near(state.scaled_value("pet", environment), 1.0, "shield counts as one pet")
+	state.data.effects.fossil_count = 1
+	var skull = item("skull", [effect("fossil_count", 1), effect("stat_percent_damage", 10),
+		{"kind": "link", "storage": "stat_links", "entry": ["stat_percent_damage", 5, "fossil_count", 1, true]}])
+	state.apply({"kind": "buy", "item": skull, "cost": 0})
+	near(state.stat("stat_percent_damage"), 20, "skull includes itself and owned fossils")
+	var proc = {"kind": "proc", "trigger": "pickup", "scaling": [["stat_luck", 0.15]], "chance": 0.75}
+	environment.pickup_rate = 2.0
+	state = State.new(build())
+	state.data.effects.gain_stat_luck = 25
+	state.data.sources.append(proc)
+	var before = Model.evaluate(state, environment)
+	state.apply({"kind": "buy", "item": item("duck", [effect("stat_luck", 8)]), "cost": 0})
+	near(Model.evaluate(state, environment).dps - before.dps, 2.25, "Lucky gains damage per material pickup")
+	environment.pickup_rate = 0.0
+	near(Model.source_output(state, proc, environment, 0).dps, 0, "no pickups yield no Lucky proc damage")
+
+
+func check_hero_preferences():
+	var data = build()
+	var turret = item("turret", [], 0)
+	turret.tags = ["structure", "explosive"]
+	var planner = Planner.new()
+	var environment = context()
+	var luck = item("luck", [effect("stat_luck", 5)], 0)
+	var armor = item("armor", [effect("stat_armor", 1)], 0)
+	var plain = planner.plan(data, [luck], environment).cards[0].value
+	data.preferences = ["stat_luck"]
+	check(planner.plan(data, [luck], environment).cards[0].value > plain, true, "preferred stat improves offer")
+	data.preferences = ["stat_armor"]
+	near(planner.plan(data, [luck], environment).cards[0].value, plain, "different hero evaluates same offer independently")
+	data.effects.gain_stat_armor = -100
+	near(planner.plan(data, [armor], environment).cards[0].value, 0, "locked stat earns no preference bonus")
+	data.preferences = ["structure", "explosive"]
+	var valued = planner.plan(data, [turret], environment).cards[0].value
+	data.preferences = ["structure"]
+	near(planner.plan(data, [turret], environment).cards[0].value, valued, "category match counted once")
+	check(valued > 0, true, "structure preference affects purchases")

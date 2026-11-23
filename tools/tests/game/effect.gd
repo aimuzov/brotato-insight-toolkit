@@ -19,3 +19,8 @@ func get_applied_value(_index):
 	return applied_override if applied_override != null else value
 func get_sign(_sign, amount):
  return Sign.POSITIVE if amount >= 0 else Sign.NEGATIVE
+func serialize():
+ return {"key":key,"value":value}
+var text_key = ""
+func get_text(_index):
+ return "%s %+d" % [key,value]

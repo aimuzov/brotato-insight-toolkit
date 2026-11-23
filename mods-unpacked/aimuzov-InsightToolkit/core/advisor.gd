@@ -5,8 +5,7 @@ const Planner = preload("choice_planner.gd")
 const State = preload("choice_state.gd")
 const Model = preload("choice_model.gd")
 const LINE_PREFIX = "DcAdvice"
-const BEST_COLOR = "ffd75e"
-const MUTED_COLOR = "9a9a9a"
+const Style = preload("../ui/style.gd")
 
 var _catalog
 var _planner
@@ -33,7 +32,7 @@ func context(player_index: int = 0) -> Dictionary:
 		"horizon": 3 if RunData.is_endless_run else int(clamp(RunData.nb_of_waves - wave, 0, 3)),
 		"hit_rate": 0.15, "mean_hit": 2.0 + wave * 0.6, "max_hit": 4.0 + wave,
 		"kill_rate": max(0.2, threat.enemies / seconds / max(1, RunData.get_player_count())),
-		"pickup_rate": 1.0, "confidence": 0.65, "partial_forecast": info.get("partial", false),
+		"pickup_rate": max(0.0, threat.materials * 0.65 / seconds / max(1, RunData.get_player_count())), "confidence": 0.65, "partial_forecast": info.get("partial", false),
 	}
 	var history = RunData.get_meta("dc_combat_history") if RunData.has_meta("dc_combat_history") else {}
 	var keys = history.keys()
@@ -45,11 +44,14 @@ func context(player_index: int = 0) -> Dictionary:
 			continue
 		var record = log_data.metrics[player_index]
 		result.hit_rate = record.hits / log_data.duration / max(0.1, 1.0 - record.get("dodge", 0.0))
+		if record.get("hitbox_damage", 0.0) > 0:
+			result["projectile_fraction"] = record.projectile_damage / record.hitbox_damage
 		if record.hits > 0:
 			result.mean_hit = max(result.mean_hit * 0.5, record.taken / record.hits / max(0.05, record.get("armor", 1.0)))
 			result.max_hit = max(result.max_hit, record.max_hit / max(0.05, record.get("armor", 1.0)))
 		result.kill_rate = record.kills / log_data.duration
-		result.pickup_rate = max(0.1, record.income / log_data.duration)
+		if record.has("gold_pickups"):
+			result.pickup_rate = record.gold_pickups / float(log_data.duration)
 		result.income = max(15.0, result.income * 0.5 + record.income * 0.5)
 		result.confidence = 0.8
 		result["observed_duration"] = log_data.duration
@@ -124,7 +126,7 @@ func evaluate_reward(resource: Resource, player_index: int, can_discard: bool) -
 		sold.data.currency = sold.data.cash
 	var sell_value = Model.improvement(baseline, Model.evaluate(sold, environment), environment) + recycle * Planner.money_weight(data, environment)
 	if not take.ok:
-		return {"decision": "Можно разобрать: +%d материалов" % recycle if can_discard else take.reason, "confidence": "low", "reasons": [take.reason], "unknown": []}
+		return {"recommend_discard": can_discard, "decision": take.reason, "confidence": "low", "reasons": [take.reason], "unknown": []}
 	if take.confidence == "low":
 		take["decision"] = "Проверь неучтённые эффекты перед разбором"
 	elif not can_discard or take.value > sell_value + 1.0:
@@ -132,7 +134,7 @@ func evaluate_reward(resource: Resource, player_index: int, can_discard: bool) -
 	elif abs(take.value - sell_value) <= 1.0:
 		take["decision"] = "Взять или разобрать: сопоставимая польза"
 	else:
-		take["decision"] = "Разобрать: +%d материалов" % recycle
+		take["recommend_discard"] = true
 	return take
 
 
@@ -163,23 +165,14 @@ func clear_description(description: Node) -> void:
 func write_to_description(description: Node, result: Dictionary) -> void:
 	clear_description(description)
 	var effects = description.get_effects()
-	for line in describe_lines(result):
-		var effect_line = description.effect_line.instance()
-		effect_line.name = LINE_PREFIX + str(effects.get_child_count())
-		effects.add_child(effect_line)
-		effect_line._display_special_text(line[0], line[1])
-	effects.visible = effects.get_child_count() > 0
+	var text = decision(result)
+	if text in ["Выгодная замена", "Выгодно вместе", "Продать ради замены"] and not result.get("reasons", []).empty():
+		text = result.reasons[0]
+	var summary = Style.advice_label(text, true)
+	summary.name = LINE_PREFIX
+	effects.add_child(summary)
+	effects.show()
 
 
-func describe_lines(result: Dictionary) -> Array:
-	var lines = []
-	var decision = result.get("decision", result.get("reason", "Нужна ручная проверка"))
-	lines.push_back(["[color=#%s]%s[/color]" % [BEST_COLOR, decision], null])
-	for reason in result.get("reasons", []).slice(0, 2):
-		lines.push_back([reason, null])
-	var unknown = result.get("unknown", [])
-	if not unknown.empty():
-		lines.push_back(["[color=#%s]Не учтено: %s[/color]" % [MUTED_COLOR, PoolStringArray(unknown.slice(0, 1)).join(", ")], null])
-	elif result.get("confidence", "low") != "high":
-		lines.push_back(["[color=#%s]Приближённая оценка[/color]" % MUTED_COLOR, null])
-	return lines
+func decision(result: Dictionary) -> String:
+	return result.get("decision", result.get("reason", "Нужна ручная проверка"))

@@ -17,6 +17,12 @@ with tempfile.TemporaryDirectory(prefix="insight-toolkit-game-contract-") as dir
         project / "mods-unpacked/aimuzov-InsightToolkit",
     )
     shutil.copyfile(project / "forecast.gd", project / "mods-unpacked/aimuzov-InsightToolkit/core/wave_forecast.gd")
+    inventory = project / "items/global"
+    inventory.mkdir(parents=True)
+    shutil.copyfile(project / "inventory_element.gd", inventory / "inventory_element.gd")
+    upgrades = project / "ui/menus/upgrades"
+    upgrades.mkdir(parents=True)
+    (upgrades / "upgrade_ui.gd").write_text("extends PanelContainer\n")
     target = project / "ui/menus/shop"
     target.mkdir(parents=True)
     shutil.copyfile(project / "popup.gd", target / "item_popup.gd")

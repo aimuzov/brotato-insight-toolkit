@@ -23,15 +23,15 @@ A mod for the Steam version of **Brotato**, with features you can toggle individ
 | Area | What the mod adds |
 | --- | --- |
 | **Combat stats** | Per-weapon damage, identical weapons grouped into one row, and comparison with the previous wave. A separate tab tracks kills, damage dealt and damage taken by enemy type. |
-| **Build advice** | Recommendations for purchases, level-ups, rerolls and sales based on your character and current build. On the level-up screen, advice appears beside the focused card. |
+| **Build advice** | Recommendations for purchases, level-ups, rerolls and sales based on your character and current build. A border marks the recommended upgrade on level-up. In the shop, a gold border highlights worthwhile purchases, the reroll button, or the next wave button. |
 | **Stat previews** | Resulting stats after a purchase, indirect changes from other items, bonus sources and thresholds. |
 | **Readable UI** | Wider tooltips, compact icons, short stat names and abbreviated large numbers: `12.5k`, `1.2kk`, `3kkk`. |
 | **Russian localization** | Corrected descriptions and shorter Russian stat names. The standard wording can be restored in settings. |
-| **Quality of life** | Newest-first Tumor upgrades, unread upgrade markers, ×1–×4 wave speed, a fixed solo camera and weapon range indicators. |
+| **Quality of life** | Newest-first Tumor upgrades, unread upgrade markers and mutation notifications on entering the shop, ×1–×4 wave speed, a fixed solo camera and weapon range indicators. |
 
 The damage difference appears once the current total exceeds the previous wave's total, or during the final five in-game seconds. Increases are green; decreases are red.
 
-The analyzer estimates combat and reroll outcomes and flags effects it cannot fully account for. Combat history accumulates during the current game session. In co-op, level-up advice remains inside the cards.
+The analyzer estimates combat and reroll outcomes and flags effects it cannot fully account for. Combat history accumulates during the current game session.
 
 ## Settings
 
